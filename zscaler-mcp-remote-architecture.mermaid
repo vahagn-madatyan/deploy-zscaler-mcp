@@ -1,0 +1,143 @@
+---
+title: "Zscaler MCP Server — Remote Deployment Architecture"
+---
+graph TB
+    subgraph CLIENTS["🤖 MCP Clients"]
+        CD["Claude Desktop"]
+        CU["Cursor"]
+        VS["VS Code Copilot"]
+        CC["Claude Code"]
+        CA["Custom Agents"]
+    end
+
+    subgraph BRIDGE["🔌 Client-Side Bridge (if needed)"]
+        MR["mcp-remote<br/><i>npm — local stdio → remote HTTP</i>"]
+    end
+
+    subgraph AUTH["🔐 Auth Gateway Layer"]
+        direction LR
+        OA["OAuth 2.1 + PKCE"]
+        TV["Token Audience<br/>Validation (RFC 9728)"]
+        OV["Origin Header<br/>Validation"]
+        RI["Resource Indicators<br/>(RFC 8707)"]
+    end
+
+    subgraph HOSTING["☁️ Hosting Platform"]
+        direction TB
+
+        subgraph PRIMARY["🏆 PRIMARY: Railway"]
+            RW_BTN["Deploy on Railway Button<br/><i>Zero repo config needed</i>"]
+            RW_SVC["Always-on Container<br/><i>~$5-8/mo · No timeout · Auto-SSL</i>"]
+        end
+
+        subgraph ALT1["Render (Alternative)"]
+            RN_BTN["Deploy to Render Button<br/><i>render.yaml required</i>"]
+            RN_SVC["Starter Instance<br/><i>$7/mo flat · 512MB</i>"]
+        end
+
+        subgraph ALT2["Prefect Horizon (FastMCP-native)"]
+            PH_SVC["FastMCP Cloud<br/><i>Free · OAuth built-in · 60s deploy</i>"]
+        end
+
+        subgraph SELFHOST["🏢 Self-Hosted: Coolify"]
+            CL_SVC["Open-source PaaS<br/><i>Any VPS · $5-15/mo · Auto-SSL</i>"]
+        end
+
+        subgraph ENTERPRISE["🔒 Enterprise: AWS Bedrock"]
+            AG_SVC["AgentCore Runtime<br/><i>MicroVM · IAM · CloudTrail</i>"]
+        end
+    end
+
+    subgraph TRANSPORT["📡 Transport Layer"]
+        SH["Streamable HTTP<br/><i>POST /mcp · JSON-RPC 2.0</i>"]
+        SSE["SSE (Legacy)<br/><i>Deprecated but supported</i>"]
+    end
+
+    subgraph SERVER["⚙️ Zscaler MCP Server (zscaler-mcp v0.6.2)"]
+        direction TB
+
+        subgraph PROTO["MCP Protocol"]
+            FM["FastMCP ≥2.5.1"]
+            SDK["mcp[cli] ≥1.9.1"]
+            TR["Tool Registry<br/><i>150+ tools · 8 products</i>"]
+        end
+
+        subgraph SAFETY["🛡️ 9-Layer Security"]
+            S1["Read-Only Default"]
+            S2["--enable-write-tools"]
+            S3["--write-tools pattern"]
+            S4["Double Delete Confirm"]
+            S5["destructiveHint metadata"]
+        end
+
+        subgraph SERVICES["Service Layer"]
+            ZIA["ZIAService<br/><i>~60 tools</i>"]
+            ZPA["ZPAService<br/><i>~60 tools</i>"]
+            ZDX["ZDXService<br/><i>18 tools</i>"]
+            ZIN["ZInsightsService<br/><i>16 tools</i>"]
+            ZCC["ZCCService<br/><i>4 tools</i>"]
+            ZTW["ZTWService<br/><i>20+ tools</i>"]
+            ZEA["ZEASMService<br/><i>7 tools</i>"]
+            ZID["ZIdentityService<br/><i>3 tools</i>"]
+        end
+    end
+
+    subgraph ZSDK["📦 Zscaler Python SDK"]
+        ZSDK_LIB["zscaler-sdk-python<br/><i>Synchronous requests · OAuth 2.0</i>"]
+    end
+
+    subgraph ZCLOUD["☁️ Zscaler Zero Trust Exchange"]
+        ZIA_API["ZIA API"]
+        ZPA_API["ZPA API"]
+        ZDX_API["ZDX API"]
+        ONEAPI["OneAPI<br/><i>OAuth 2.0 CC flow</i>"]
+        GQL["GraphQL<br/><i>Z-Insights</i>"]
+    end
+
+    subgraph SECRETS["🔑 Secrets Management"]
+        direction LR
+        RW_ENV["Railway Env Vars"]
+        SM["AWS Secrets Manager"]
+        KV["CF Workers KV"]
+        VLT["Hashicorp Vault"]
+    end
+
+    subgraph OBSERVE["📊 Observability"]
+        direction LR
+        AL["Audit Logs"]
+        CID["Correlation IDs"]
+        SIEM["SIEM Integration"]
+        OT["OpenTelemetry"]
+    end
+
+    %% Connections
+    CD & CU & VS & CC & CA -->|"Streamable HTTP<br/>or via mcp-remote"| BRIDGE
+    BRIDGE --> AUTH
+    CD & CU & VS & CC & CA -->|"Direct HTTP"| AUTH
+    AUTH --> TRANSPORT
+    TRANSPORT --> SERVER
+
+    RW_BTN --> RW_SVC
+    RN_BTN --> RN_SVC
+    RW_SVC & RN_SVC & PH_SVC & CL_SVC & AG_SVC --> SERVER
+
+    SERVER --> ZSDK
+    ZSDK --> ZCLOUD
+
+    SECRETS -.->|"Credentials"| SERVER
+    SERVER -.->|"Events"| OBSERVE
+
+    %% Styles
+    classDef primary fill:#0d3320,stroke:#00d4aa,stroke-width:2px,color:#00d4aa
+    classDef alt fill:#1a1a3e,stroke:#818cf8,stroke-width:1px,color:#c4b5fd
+    classDef danger fill:#3b1111,stroke:#ef4444,stroke-width:1px,color:#fca5a5
+    classDef warning fill:#3b2f11,stroke:#f59e0b,stroke-width:1px,color:#fcd34d
+    classDef info fill:#112233,stroke:#3b82f6,stroke-width:1px,color:#93c5fd
+    classDef neutral fill:#1e293b,stroke:#475569,stroke-width:1px,color:#94a3b8
+
+    class PRIMARY primary
+    class ALT1,ALT2 alt
+    class SAFETY danger
+    class SECRETS warning
+    class AUTH info
+    class OBSERVE neutral
