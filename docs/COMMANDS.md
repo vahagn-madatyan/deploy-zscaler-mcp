@@ -233,10 +233,6 @@ The CLI supports the following environment variables:
 |----------|-------------|-------------------|
 | `AWS_PROFILE` | AWS profile name | `--profile` |
 | `AWS_DEFAULT_REGION` | AWS region | `--region` |
-| `ZSCALER_USERNAME` | Zscaler username | `--zscaler-username` |
-| `ZSCALER_PASSWORD` | Zscaler password | `--zscaler-password` |
-| `ZSCALER_API_KEY` | Zscaler API key | `--zscaler-api-key` |
-| `ZSCALER_CLOUD` | Zscaler cloud name | `--zscaler-cloud` |
 
 ## Exit Codes
 
