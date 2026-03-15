@@ -10,7 +10,7 @@ An individual operator can run one command and have a working, verified Zscaler 
 
 ## Current State
 
-Slice S04 (Verification & Connection Output) complete. CLI now supports full deployment pipeline:
+**Milestone M001 complete.** CLI now supports full deployment pipeline:
 - Comprehensive validation engine (AWS session, IAM permissions, Zscaler credentials)
 - AWS Secrets Manager integration with KMS-encrypted secrets and idempotent creation
 - IAM execution role bootstrap with trust policy validation and propagation wait
@@ -20,8 +20,9 @@ Slice S04 (Verification & Connection Output) complete. CLI now supports full dep
 - **Runtime verification** via CloudWatch log analysis with health pattern matching
 - **Connection formatter** generating cross-platform MCP client configs for Claude Desktop and Cursor
 - **CLI deploy command** with verification panels, connection instructions, and proper exit codes
+- **Comprehensive documentation** with README, command reference, and troubleshooting guides
 
-All 372 tests passing (S01: 72, S02: 117, S03: 93, S04: 90). Requirements R001, R002, R003, R004, R005, and R006 validated.
+All 372 tests passing (S01: 72, S02: 117, S03: 93, S04: 90, S05: 0). Requirements R001-R007 validated. The CLI delivers on its vision: an individual operator runs one command and has a verified, working Zscaler MCP server on AWS Bedrock AgentCore.
 
 ## Architecture / Key Patterns
 
@@ -39,6 +40,6 @@ See `.gsd/REQUIREMENTS.md` for the explicit capability contract, requirement sta
 
 ## Milestone Sequence
 
-- [ ] **M001:** Bedrock Deploy CLI Foundation — One-command interactive deploy to AWS Bedrock AgentCore with strict preflight, Secrets Manager integration, and runtime verification
+- [x] **M001:** Bedrock Deploy CLI Foundation — One-command interactive deploy to AWS Bedrock AgentCore with strict preflight, Secrets Manager integration, and runtime verification
 - [ ] **M002:** AWS Hardening & Reusable Engine — Lifecycle management (update/destroy), status/reporting, reusable deployment abstractions
 - [ ] **M003:** Multi-Server Network/Security MCP Support — Support additional network and security MCP servers beyond Zscaler, template system for owned servers
