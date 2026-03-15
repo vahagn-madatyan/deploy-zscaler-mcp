@@ -2,6 +2,7 @@
 
 from .secrets_manager import SecretsManager, SecretResult
 from .iam_bootstrap import IAMBootstrap, IAMBootstrapError, TrustPolicyMismatchError
+from .bedrock_runtime import BedrockRuntime, BedrockRuntimeError
 
 __all__ = [
     "SecretsManager",
@@ -9,4 +10,6 @@ __all__ = [
     "IAMBootstrap",
     "IAMBootstrapError",
     "TrustPolicyMismatchError",
+    "BedrockRuntime",
+    "BedrockRuntimeError",
 ]

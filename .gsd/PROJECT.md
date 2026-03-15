@@ -10,14 +10,16 @@ An individual operator can run one command and have a working, verified Zscaler 
 
 ## Current State
 
-Slice S01 (Preflight & Validation Engine) complete. Slice S02 (Secrets Manager & IAM Bootstrap) complete. CLI foundation with:
+Slice S03 (Bedrock Runtime Deployment) complete. CLI now supports full deployment flow:
 - Comprehensive validation engine (AWS session, IAM permissions, Zscaler credentials)
 - AWS Secrets Manager integration with KMS-encrypted secrets and idempotent creation
 - IAM execution role bootstrap with trust policy validation and propagation wait
 - Bootstrap orchestrator with automatic rollback on partial failure
-- Rich-formatted CLI bootstrap command with interactive and non-interactive modes
+- **BedrockRuntime class** with CRUD operations and status polling
+- **DeployOrchestrator** coordinating bootstrap → runtime creation → polling with rollback
+- **CLI deploy command** with all flags and Rich table output
 
-All 189 tests passing. Requirements R001, R002, and R003 validated. R004 partially complete (IAM role creation done, Bedrock runtime deployment in S03).
+All 282 tests passing (S01: 72, S02: 117, S03: 93). Requirements R001, R002, R003, and R004 validated. R005 (Runtime Verification) and R006 (Connection Instructions) remain for S04.
 
 ## Architecture / Key Patterns
 
@@ -26,6 +28,8 @@ All 189 tests passing. Requirements R001, R002, and R003 validated. R004 partial
 - AWS-native: Uses official AWS SDKs and APIs
 - Security-first: Secrets Manager for credentials, never env vars in production
 - Verification-driven: Runtime must be proven up, not just created
+- Phase-based deployment: Track exact failure location (bootstrap, runtime_create, polling)
+- Selective rollback: Only delete runtime on failure, keep bootstrap resources for troubleshooting
 
 ## Capability Contract
 

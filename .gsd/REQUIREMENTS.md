@@ -39,18 +39,18 @@ This file is the explicit capability and coverage contract for the project.
 - **Validation:** S02-UAT
 - **Notes:** SecretsManager class with idempotent create_or_use_secret(), KMS encryption, JSON secret structure. 31 tests + integration coverage.
 
-## Active
+## Validated
 
 ### R004 — Runtime Deployment Execution
 - **Class:** core-capability
-- **Status:** active
+- **Status:** validated
 - **Description:** CLI creates the Bedrock AgentCore runtime using AWS APIs, with proper IAM execution role, ECR image reference, and environment configuration.
 - **Why it matters:** The actual deployment must happen automatically, not just generate templates.
 - **Source:** user
-- **Primary owning slice:** M001/S02
-- **Supporting slices:** M001/S01
-- **Validation:** unmapped
-- **Notes:** Use official Zscaler Bedrock image or guide ECR push if custom
+- **Primary owning slice:** M001/S03
+- **Supporting slices:** M001/S02, M001/S01
+- **Validation:** S03-UAT
+- **Notes:** BedrockRuntime class with create_runtime(), status polling with exponential backoff, DeployOrchestrator coordinating bootstrap→runtime→polling, 93 tests proving integration with S02 outputs.
 
 ### R005 — Runtime Verification
 - **Class:** failure-visibility
@@ -151,7 +151,7 @@ This file is the explicit capability and coverage contract for the project.
 | R001 | primary-user-loop | validated | M001/S01 | M001/S02 | S01-UAT |
 | R002 | failure-visibility | validated | M001/S01 | none | S01-UAT |
 | R003 | compliance/security | validated | M001/S02 | M001/S01 | S02-UAT |
-| R004 | core-capability | active | M001/S03 | M001/S02 | unmapped |
+| R004 | core-capability | validated | M001/S03 | M001/S02 | S03-UAT |
 | R005 | failure-visibility | active | M001/S03 | M001/S02 | unmapped |
 | R006 | primary-user-loop | active | M001/S03 | none | unmapped |
 | R007 | differentiator | active | M001 | M003 | unmapped |
@@ -163,7 +163,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 6
+- Active requirements: 5
 - Mapped to slices: 6
-- Validated: 3
+- Validated: 4
 - Unmapped active requirements: 0

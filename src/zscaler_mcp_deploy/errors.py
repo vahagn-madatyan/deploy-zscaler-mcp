@@ -217,3 +217,70 @@ class ZscalerAuthenticationError(ZscalerMCPError):
             category=ErrorCategory.ZSCALER_AUTHENTICATION,
             context=context
         )
+
+
+class BedrockRuntimeError(ZscalerMCPError):
+    """Error related to Bedrock runtime operations."""
+    
+    def __init__(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(
+            message=message,
+            category=ErrorCategory.AWS_PERMISSIONS,
+            severity=ErrorSeverity.ERROR,
+            error_code=error_code or "S03-001",
+            context=context
+        )
+
+
+class BedrockRuntimePollingError(ZscalerMCPError):
+    """Error related to Bedrock runtime polling operations."""
+    
+    def __init__(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(
+            message=message,
+            category=ErrorCategory.AWS_PERMISSIONS,
+            severity=ErrorSeverity.ERROR,
+            error_code=error_code or "S03-002",
+            context=context
+        )
+
+
+class DeployOrchestratorError(ZscalerMCPError):
+    """Error related to deployment orchestration operations.
+    
+    Error codes:
+    - S03-003: Generic orchestration error
+    - S03-003-BootstrapFailed: Bootstrap phase failed
+    - S03-003-RuntimeCreateFailed: Runtime creation failed
+    - S03-003-PollingTimeout: Runtime polling timed out
+    - S03-003-RuntimeFailed: Runtime reached CREATE_FAILED state
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        phase: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        full_context = context or {}
+        if phase:
+            full_context["phase"] = phase
+        super().__init__(
+            message=message,
+            category=ErrorCategory.AWS_PERMISSIONS,
+            severity=ErrorSeverity.ERROR,
+            error_code=error_code or "S03-003",
+            context=full_context
+        )
+        self.phase = phase

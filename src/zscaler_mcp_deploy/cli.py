@@ -13,7 +13,8 @@ from .validators.zscaler import ZscalerCredentialValidator
 from .errors import AWSCredentialsError, AWSRegionError, AWSPermissionsError
 from .messages import ErrorMessageCatalog, UserGuidance
 from .bootstrap import BootstrapOrchestrator
-from .models import BootstrapConfig
+from .deploy import DeployOrchestrator
+from .models import BootstrapConfig, DeployConfig
 
 app = typer.Typer(
     name="zscaler-mcp-deploy",
@@ -315,6 +316,192 @@ def bootstrap(
         console.print("\n[blue]Remediation:[/blue] Check the error details and try again")
         console.print("[green]🔧 For detailed help:[/green]")
         console.print("   [cyan]$ zscaler-mcp-deploy bootstrap --help[/cyan]")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def deploy(
+    runtime_name: Optional[str] = typer.Option(None, "--runtime-name", "-n", help="Name for the Bedrock runtime"),
+    secret_name: Optional[str] = typer.Option(None, "--secret-name", "-s", help="Name for the Secrets Manager secret"),
+    role_name: Optional[str] = typer.Option(None, "--role-name", "-r", help="Name for the IAM execution role"),
+    image_uri: Optional[str] = typer.Option(None, "--image-uri", "-i", help="Container image URI (optional, uses default if not provided)"),
+    enable_write_tools: bool = typer.Option(False, "--enable-write-tools", "-w", help="Enable write-capable MCP tools"),
+    kms_key_id: Optional[str] = typer.Option(None, "--kms-key-id", "-k", help="KMS key ARN for secret encryption (optional)"),
+    region: Optional[str] = typer.Option(None, "--region", help="AWS region (optional, uses configured default)"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="AWS profile name (optional)"),
+    username: Optional[str] = typer.Option(None, "--username", "-u", help="Zscaler username (email)"),
+    password: Optional[str] = typer.Option(None, "--password", help="Zscaler password"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", help="Zscaler API key (32 hex characters)"),
+    cloud: str = typer.Option("zscaler", "--cloud", "-c", help="Zscaler cloud name"),
+    description: Optional[str] = typer.Option(None, "--description", "-d", help="Description for created resources"),
+    non_interactive: bool = typer.Option(False, "--non-interactive", help="Fail if required values are missing instead of prompting"),
+    poll_timeout: int = typer.Option(600, "--poll-timeout", "-t", help="Timeout for runtime polling in seconds (default: 600)"),
+):
+    """Deploy Zscaler MCP server to AWS Bedrock AgentCore.
+    
+    Performs complete deployment:
+    1. Creates or uses existing Secrets Manager secret for Zscaler credentials
+    2. Creates or uses existing IAM execution role for Bedrock
+    3. Creates Bedrock AgentCore runtime with the Zscaler MCP server
+    4. Polls until runtime reaches READY status
+    
+    All operations are idempotent - running multiple times is safe.
+    On runtime failure, the runtime is rolled back but bootstrap resources are kept.
+    """
+    console.print("[bold blue]Zscaler MCP Deployment[/bold blue]")
+    console.print("[dim]Deploying Zscaler MCP server to AWS Bedrock AgentCore...[/dim]\n")
+    
+    # Prompt for missing required values
+    if not runtime_name:
+        if non_interactive:
+            console.print("[red]Error:[/red] --runtime-name is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        runtime_name = typer.prompt("Runtime name")
+    
+    if not secret_name:
+        if non_interactive:
+            console.print("[red]Error:[/red] --secret-name is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        secret_name = typer.prompt("Secret name")
+    
+    if not role_name:
+        if non_interactive:
+            console.print("[red]Error:[/red] --role-name is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        role_name = typer.prompt("Role name")
+    
+    if not username:
+        if non_interactive:
+            console.print("[red]Error:[/red] --username is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        username = typer.prompt("Zscaler username (email)")
+    
+    if not password:
+        if non_interactive:
+            console.print("[red]Error:[/red] --password is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        password = typer.prompt("Zscaler password", hide_input=True)
+    
+    if not api_key:
+        if non_interactive:
+            console.print("[red]Error:[/red] --api-key is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        api_key = typer.prompt("Zscaler API key (32 hex characters)", hide_input=True)
+    
+    # Create deployment configuration
+    config = DeployConfig(
+        runtime_name=runtime_name,
+        secret_name=secret_name,
+        role_name=role_name,
+        username=username,
+        password=password,
+        api_key=api_key,
+        cloud=cloud,
+        image_uri=image_uri,
+        enable_write_tools=enable_write_tools,
+        kms_key_id=kms_key_id,
+        region=region,
+        profile_name=profile,
+        description=description or f"Zscaler MCP deployment for {cloud} cloud",
+        tags=None  # Could add tags from CLI in future
+    )
+    
+    # Initialize orchestrator
+    orchestrator = DeployOrchestrator(
+        region=region,
+        profile_name=profile
+    )
+    
+    # Run deployment
+    try:
+        result = orchestrator.deploy(config, poll_timeout_seconds=poll_timeout)
+        
+        # Display results in Rich table
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Resource", style="dim", width=20)
+        table.add_column("Status", width=15)
+        table.add_column("Details", width=60)
+        
+        # Secret row
+        if result.secret_arn:
+            secret_status = "[green]Created[/green]" if result.secret_created else "[blue]Reused[/blue]"
+            table.add_row("Secret", secret_status, result.secret_arn)
+        
+        # Role row
+        if result.role_arn:
+            role_status = "[green]Created[/green]" if result.role_created else "[blue]Reused[/blue]"
+            table.add_row("IAM Role", role_status, result.role_arn)
+        
+        # Runtime row
+        if result.runtime_arn:
+            if result.status == "READY":
+                runtime_status = "[green]READY[/green]"
+            elif result.status == "CREATE_FAILED":
+                runtime_status = "[red]FAILED[/red]"
+            else:
+                runtime_status = f"[yellow]{result.status}[/yellow]"
+            table.add_row("Bedrock Runtime", runtime_status, result.runtime_arn)
+        
+        console.print(table)
+        
+        if result.success:
+            console.print("\n[green]✅ Deployment completed successfully![/green]")
+            
+            # Show runtime details
+            details_table = Table(show_header=False, header_style="bold")
+            details_table.add_column("Property", style="bold cyan", width=20)
+            details_table.add_column("Value", width=60)
+            
+            details_table.add_row("Runtime ID", result.runtime_id or "N/A")
+            details_table.add_row("Runtime ARN", result.runtime_arn or "N/A")
+            details_table.add_row("Status", f"[green]{result.status}[/green]" if result.status == "READY" else result.status or "N/A")
+            if result.endpoint_url:
+                details_table.add_row("Endpoint URL", result.endpoint_url)
+            
+            console.print("\n[bold]Runtime Details:[/bold]")
+            console.print(details_table)
+            
+            # Show next steps
+            console.print("\n[bold blue]Next Steps:[/bold blue]")
+            console.print("  1. Use the runtime ID to connect your Bedrock agent:")
+            console.print(f"     [cyan]Runtime ID: {result.runtime_id}[/cyan]")
+            if result.endpoint_url:
+                console.print(f"     [cyan]Endpoint: {result.endpoint_url}[/cyan]")
+            console.print("\n  2. Configure your Bedrock agent to use this runtime")
+            console.print("  3. Test connectivity with your Zscaler cloud")
+            
+        else:
+            console.print(f"\n[red]❌ Deployment failed during '{result.phase}' phase[/red]")
+            
+            # Display error
+            console.print(f"\n[bold red]Error {result.error_code}:[/bold red] {result.error_message}")
+            
+            # Show phase-specific remediation
+            if result.phase == "bootstrap":
+                console.print("\n[blue]Remediation:[/blue] Check AWS credentials and permissions for Secrets Manager/IAM")
+                console.print("[green]🔧 Suggested fix commands:[/green]")
+                console.print("   [cyan]$ zscaler-mcp-deploy preflight[/cyan]")
+                console.print("   [cyan]$ aws secretsmanager list-secrets[/cyan]")
+                console.print("   [cyan]$ aws iam list-roles[/cyan]")
+            elif result.phase == "runtime_create":
+                console.print("\n[blue]Remediation:[/blue] Check Bedrock permissions and image URI")
+                console.print("[green]🔧 Suggested fix commands:[/green]")
+                console.print("   [cyan]$ aws bedrock-agent list-agent-runtimes[/cyan]")
+                if image_uri:
+                    console.print(f"   [cyan]Verify image URI: {image_uri}[/cyan]")
+            elif result.phase == "polling":
+                console.print("\n[blue]Remediation:[/blue] Runtime creation timed out or failed")
+                console.print("  • Check CloudWatch Logs: /aws/bedrock/{}".format(result.runtime_id or "<runtime-id>"))
+                console.print("  • Verify VPC configuration and security groups")
+                console.print("  • Check that the container image is accessible")
+            
+            raise typer.Exit(code=1)
+            
+    except Exception as e:
+        console.print(f"\n[red]❌ Unexpected error:[/red] {str(e)}")
+        console.print("\n[blue]Remediation:[/blue] Check the error details and try again")
+        console.print("[green]🔧 For detailed help:[/green]")
+        console.print("   [cyan]$ zscaler-mcp-deploy deploy --help[/cyan]")
         raise typer.Exit(code=1)
 
 
