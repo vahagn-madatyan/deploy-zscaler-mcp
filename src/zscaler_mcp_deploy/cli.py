@@ -2,7 +2,7 @@
 CLI entry point for the Zscaler MCP Deployer.
 """
 import typer
-from typing import Optional
+from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
 
@@ -12,6 +12,8 @@ from .validators.iam import IAMPermissionValidator
 from .validators.zscaler import ZscalerCredentialValidator
 from .errors import AWSCredentialsError, AWSRegionError, AWSPermissionsError
 from .messages import ErrorMessageCatalog, UserGuidance
+from .bootstrap import BootstrapOrchestrator
+from .models import BootstrapConfig
 
 app = typer.Typer(
     name="zscaler-mcp-deploy",
@@ -163,6 +165,158 @@ def help_credentials():
     # Common Issues
     console.print("[bold]Troubleshooting Common Issues:[/bold]")
     console.print(UserGuidance.get_common_issues_help())
+
+
+@app.command()
+def bootstrap(
+    secret_name: Optional[str] = typer.Option(None, "--secret-name", "-s", help="Name for the Secrets Manager secret"),
+    role_name: Optional[str] = typer.Option(None, "--role-name", "-r", help="Name for the IAM execution role"),
+    kms_key_id: Optional[str] = typer.Option(None, "--kms-key-id", "-k", help="KMS key ARN for secret encryption (optional, uses AWS managed key if not specified)"),
+    use_existing: bool = typer.Option(False, "--use-existing", help="Allow using existing resources (idempotent behavior)"),
+    region: Optional[str] = typer.Option(None, "--region", help="AWS region (optional, uses configured default)"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="AWS profile name (optional)"),
+    username: Optional[str] = typer.Option(None, "--username", "-u", help="Zscaler username (email)"),
+    password: Optional[str] = typer.Option(None, "--password", help="Zscaler password"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", help="Zscaler API key (32 hex characters)"),
+    cloud: str = typer.Option("zscaler", "--cloud", "-c", help="Zscaler cloud name"),
+    description: Optional[str] = typer.Option(None, "--description", "-d", help="Description for created resources"),
+    non_interactive: bool = typer.Option(False, "--non-interactive", help="Fail if required values are missing instead of prompting"),
+):
+    """Bootstrap AWS resources for Zscaler MCP deployment.
+    
+    Creates or uses existing:
+    - AWS Secrets Manager secret for Zscaler credentials
+    - IAM execution role for Bedrock AgentCore
+    
+    All operations are idempotent - running multiple times is safe.
+    """
+    console.print("[bold blue]Zscaler MCP Bootstrap[/bold blue]")
+    console.print("[dim]Creating AWS resources for Zscaler MCP deployment...[/dim]\n")
+    
+    # Prompt for missing required values
+    if not secret_name:
+        if non_interactive:
+            console.print("[red]Error:[/red] --secret-name is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        secret_name = typer.prompt("Secret name")
+    
+    if not role_name:
+        if non_interactive:
+            console.print("[red]Error:[/red] --role-name is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        role_name = typer.prompt("Role name")
+    
+    if not username:
+        if non_interactive:
+            console.print("[red]Error:[/red] --username is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        username = typer.prompt("Zscaler username (email)")
+    
+    if not password:
+        if non_interactive:
+            console.print("[red]Error:[/red] --password is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        password = typer.prompt("Zscaler password", hide_input=True)
+    
+    if not api_key:
+        if non_interactive:
+            console.print("[red]Error:[/red] --api-key is required (or remove --non-interactive to prompt)")
+            raise typer.Exit(code=1)
+        api_key = typer.prompt("Zscaler API key (32 hex characters)", hide_input=True)
+    
+    # Create bootstrap configuration
+    config = BootstrapConfig(
+        secret_name=secret_name,
+        role_name=role_name,
+        username=username,
+        password=password,
+        api_key=api_key,
+        cloud=cloud,
+        kms_key_id=kms_key_id,
+        region=region,
+        profile_name=profile,
+        description=description or f"Zscaler MCP resources for {cloud} cloud"
+    )
+    
+    # Initialize orchestrator
+    orchestrator = BootstrapOrchestrator(
+        region=region,
+        profile_name=profile
+    )
+    
+    # Run bootstrap
+    try:
+        result = orchestrator.bootstrap_resources(config)
+        
+        # Display results in Rich table
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Resource", style="dim", width=20)
+        table.add_column("Status", width=15)
+        table.add_column("ARN", width=60)
+        
+        if result.success:
+            # Secret row
+            secret_status = "[green]Created[/green]" if result.secret_created else "[blue]Reused[/blue]"
+            table.add_row("Secret", secret_status, result.secret_arn or "N/A")
+            
+            # Role row
+            role_status = "[green]Created[/green]" if result.role_created else "[blue]Reused[/blue]"
+            table.add_row("IAM Role", role_status, result.role_arn or "N/A")
+            
+            console.print(table)
+            console.print("\n[green]✅ Bootstrap completed successfully![/green]")
+            console.print("\n[dim]Next steps:[/dim]")
+            console.print(f"  1. Secret ARN: [cyan]{result.secret_arn}[/cyan]")
+            console.print(f"  2. Role ARN:   [cyan]{result.role_arn}[/cyan]")
+            
+        else:
+            # Failed - show what we have
+            if result.secret_arn:
+                secret_status = "[green]Created[/green]" if result.secret_created else "[blue]Reused[/blue]"
+                table.add_row("Secret", secret_status, result.secret_arn)
+            else:
+                table.add_row("Secret", "[red]Failed[/red]", "N/A")
+            
+            if result.role_arn:
+                role_status = "[green]Created[/green]" if result.role_created else "[blue]Reused[/blue]"
+                table.add_row("IAM Role", role_status, result.role_arn)
+            else:
+                table.add_row("IAM Role", "[red]Failed[/red]", "N/A")
+            
+            console.print(table)
+            console.print(f"\n[red]❌ Bootstrap failed during '{result.phase}' phase[/red]")
+            
+            # Display error using S01 error patterns
+            console.print(f"\n[bold red]Error {result.error_code}:[/bold red] {result.error_message}")
+            
+            # Show fix commands based on error code
+            if result.error_code:
+                if "PreflightFailed" in result.error_code:
+                    console.print("\n[blue]Remediation:[/blue] Check your AWS credentials and region configuration")
+                    console.print("[green]🔧 Suggested fix commands:[/green]")
+                    console.print("   [cyan]$ aws configure[/cyan]")
+                    console.print("   [cyan]$ zscaler-mcp-deploy preflight --region us-east-1[/cyan]")
+                elif "SecretFailed" in result.error_code:
+                    console.print("\n[blue]Remediation:[/blue] Check Secrets Manager permissions and KMS key access")
+                    console.print("[green]🔧 Suggested fix commands:[/green]")
+                    console.print("   [cyan]$ aws secretsmanager list-secrets[/cyan]")
+                    if kms_key_id:
+                        console.print("   [cyan]$ aws kms describe-key --key-id {kms_key_id}[/cyan]")
+                elif "RoleFailed" in result.error_code:
+                    console.print("\n[blue]Remediation:[/blue] Check IAM permissions for role creation")
+                    console.print("[green]🔧 Suggested fix commands:[/green]")
+                    console.print("   [cyan]$ aws iam list-roles[/cyan]")
+                    console.print("   [cyan]$ aws iam get-role --role-name {role_name}[/cyan]")
+            
+            raise typer.Exit(code=1)
+            
+    except Exception as e:
+        console.print(f"\n[red]❌ Unexpected error:[/red] {str(e)}")
+        console.print("\n[blue]Remediation:[/blue] Check the error details and try again")
+        console.print("[green]🔧 For detailed help:[/green]")
+        console.print("   [cyan]$ zscaler-mcp-deploy bootstrap --help[/cyan]")
+        raise typer.Exit(code=1)
+
 
 if __name__ == "__main__":
     app()

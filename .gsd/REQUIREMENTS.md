@@ -26,18 +26,20 @@ This file is the explicit capability and coverage contract for the project.
 - **Validation:** S01-UAT
 - **Notes:** Comprehensive validation engine with 72 tests covering AWS session, IAM permissions, and Zscaler credentials. Fails fast with exact fix instructions.
 
-## Active
+## Validated
 
 ### R003 — AWS Secrets Manager Integration
 - **Class:** compliance/security
-- **Status:** active
+- **Status:** validated
 - **Description:** Zscaler API credentials stored in AWS Secrets Manager (KMS-encrypted), not passed as environment variables. Container retrieves credentials at runtime.
 - **Why it matters:** Zero credentials in infrastructure configuration, CloudTrail audit logging, supports rotation. Aligns with Zscaler official recommended approach.
 - **Source:** user
 - **Primary owning slice:** M001/S02
 - **Supporting slices:** M001/S01
-- **Validation:** unmapped
-- **Notes:** Must create secret if doesn't exist, use existing if provided
+- **Validation:** S02-UAT
+- **Notes:** SecretsManager class with idempotent create_or_use_secret(), KMS encryption, JSON secret structure. 31 tests + integration coverage.
+
+## Active
 
 ### R004 — Runtime Deployment Execution
 - **Class:** core-capability
@@ -148,8 +150,8 @@ This file is the explicit capability and coverage contract for the project.
 |---|---|---|---|---|---|
 | R001 | primary-user-loop | validated | M001/S01 | M001/S02 | S01-UAT |
 | R002 | failure-visibility | validated | M001/S01 | none | S01-UAT |
-| R003 | compliance/security | active | M001/S02 | M001/S01 | unmapped |
-| R004 | core-capability | active | M001/S02 | M001/S01 | unmapped |
+| R003 | compliance/security | validated | M001/S02 | M001/S01 | S02-UAT |
+| R004 | core-capability | active | M001/S03 | M001/S02 | unmapped |
 | R005 | failure-visibility | active | M001/S03 | M001/S02 | unmapped |
 | R006 | primary-user-loop | active | M001/S03 | none | unmapped |
 | R007 | differentiator | active | M001 | M003 | unmapped |
@@ -161,7 +163,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 7
-- Mapped to slices: 0 (pending slice planning)
-- Validated: 0
-- Unmapped active requirements: 7
+- Active requirements: 6
+- Mapped to slices: 6
+- Validated: 3
+- Unmapped active requirements: 0

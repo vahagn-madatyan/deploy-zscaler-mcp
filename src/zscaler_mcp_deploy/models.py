@@ -1,0 +1,130 @@
+"""Data models for Zscaler MCP Deployer."""
+
+from dataclasses import dataclass, field
+from typing import Optional, Dict, Any, List
+
+
+@dataclass
+class BootstrapConfig:
+    """Configuration for bootstrap orchestration.
+    
+    Attributes:
+        secret_name: Name of the secret to create/use
+        role_name: Name of the IAM role to create/use
+        username: Zscaler username
+        password: Zscaler password
+        api_key: Zscaler API key
+        cloud: Zscaler cloud name
+        kms_key_id: KMS key ARN for secret encryption (optional)
+        region: AWS region (optional)
+        profile_name: AWS profile name (optional)
+        description: Description for resources (optional)
+        tags: List of tag dicts with 'Key' and 'Value' (optional)
+    """
+    secret_name: str
+    role_name: str
+    username: str
+    password: str
+    api_key: str
+    cloud: str
+    kms_key_id: Optional[str] = None
+    region: Optional[str] = None
+    profile_name: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[Dict[str, str]]] = None
+
+
+@dataclass
+class BootstrapResult:
+    """Result of bootstrap orchestration.
+    
+    Attributes:
+        secret_arn: ARN of the secret
+        role_arn: ARN of the IAM role
+        resource_ids: List of resource identifiers created (for rollback)
+        success: True if bootstrap succeeded
+        error_message: Error message if bootstrap failed
+        error_code: Error code for diagnostics
+        phase: Phase where failure occurred (preflight, secret, role, rollback)
+        secret_created: True if secret was newly created
+        role_created: True if role was newly created
+    """
+    secret_arn: Optional[str] = None
+    role_arn: Optional[str] = None
+    resource_ids: List[str] = field(default_factory=list)
+    success: bool = False
+    error_message: Optional[str] = None
+    error_code: Optional[str] = None
+    phase: Optional[str] = None
+    secret_created: bool = False
+    role_created: bool = False
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the result to a dictionary."""
+        return {
+            "secret_arn": self.secret_arn,
+            "role_arn": self.role_arn,
+            "resource_ids": self.resource_ids,
+            "success": self.success,
+            "error_message": self.error_message,
+            "error_code": self.error_code,
+            "phase": self.phase,
+            "secret_created": self.secret_created,
+            "role_created": self.role_created,
+        }
+
+
+@dataclass
+class SecretResult:
+    """Result of a secret creation or lookup operation.
+    
+    Attributes:
+        arn: The ARN of the secret
+        name: The name of the secret
+        version_id: The version ID of the secret (if created/updated)
+        created: True if the secret was newly created, False if it existed
+        kms_key_id: The KMS key ID used for encryption (optional)
+    """
+    arn: str
+    name: str
+    version_id: Optional[str] = None
+    created: bool = False
+    kms_key_id: Optional[str] = None
+    
+    def to_dict(self) -> dict:
+        """Convert the result to a dictionary."""
+        return {
+            "arn": self.arn,
+            "name": self.name,
+            "version_id": self.version_id,
+            "created": self.created,
+            "kms_key_id": self.kms_key_id,
+        }
+
+
+@dataclass
+class IAMRoleResult:
+    """Result of an IAM role creation or lookup operation.
+    
+    Attributes:
+        arn: The ARN of the IAM role
+        name: The name of the role
+        role_id: The unique role ID assigned by AWS
+        created: True if the role was newly created, False if it existed
+        trust_policy: The trust policy document attached to the role
+    """
+    arn: str
+    name: str
+    role_id: Optional[str] = None
+    created: bool = False
+    trust_policy: Optional[dict] = None
+    
+    def to_dict(self) -> dict:
+        """Convert the result to a dictionary."""
+        return {
+            "arn": self.arn,
+            "name": self.name,
+            "role_id": self.role_id,
+            "created": self.created,
+            "trust_policy": self.trust_policy,
+        }

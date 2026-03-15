@@ -52,7 +52,7 @@ This milestone is complete only when all are true:
 - [x] **S01: Preflight & Validation Engine** `risk:high` `depends:[]`
   > After this: CLI validates AWS permissions, region, Zscaler credentials, and fails fast with exact fix instructions before any deployment attempt.
 
-- [ ] **S02: Secrets Manager & IAM Bootstrap** `risk:high` `depends:[S01]`
+- [x] **S02: Secrets Manager & IAM Bootstrap** `risk:high` `depends:[S01]`
   > After this: CLI creates KMS-encrypted Secrets Manager secret and IAM execution role with proper permissions, or uses existing resources.
 
 - [ ] **S03: Bedrock Runtime Deployment** `risk:medium` `depends:[S02]`

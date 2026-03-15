@@ -10,13 +10,14 @@ An individual operator can run one command and have a working, verified Zscaler 
 
 ## Current State
 
-Slice S01 (Preflight & Validation Engine) complete. CLI foundation established with Typer framework. Comprehensive validation engine deployed including:
-- AWS session validation with credential chain support
-- IAM permission validation for Bedrock/SecretsManager/STS
-- Zscaler credential validation with format checking and connectivity tests
-- Structured error messaging system with actionable fix instructions
+Slice S01 (Preflight & Validation Engine) complete. Slice S02 (Secrets Manager & IAM Bootstrap) complete. CLI foundation with:
+- Comprehensive validation engine (AWS session, IAM permissions, Zscaler credentials)
+- AWS Secrets Manager integration with KMS-encrypted secrets and idempotent creation
+- IAM execution role bootstrap with trust policy validation and propagation wait
+- Bootstrap orchestrator with automatic rollback on partial failure
+- Rich-formatted CLI bootstrap command with interactive and non-interactive modes
 
-All 72 tests passing. Requirements R001 and R002 validated.
+All 189 tests passing. Requirements R001, R002, and R003 validated. R004 partially complete (IAM role creation done, Bedrock runtime deployment in S03).
 
 ## Architecture / Key Patterns
 
