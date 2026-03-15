@@ -284,3 +284,93 @@ class DeployOrchestratorError(ZscalerMCPError):
             context=full_context
         )
         self.phase = phase
+
+
+class CloudWatchError(ZscalerMCPError):
+    """Error related to CloudWatch Logs operations.
+    
+    Error codes:
+    - S04-001: Generic CloudWatch error
+    - S04-001-001: Log group not found
+    - S04-001-002: Log stream not found
+    - S04-001-003: API throttling/rate limit
+    - S04-001-004: Permission denied to CloudWatch
+    - S04-001-005: Invalid log group name
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        phase: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        full_context = context or {}
+        if phase:
+            full_context["phase"] = phase
+        super().__init__(
+            message=message,
+            category=ErrorCategory.AWS_PERMISSIONS,
+            severity=ErrorSeverity.ERROR,
+            error_code=error_code or "S04-001",
+            context=full_context
+        )
+        self.phase = phase
+
+
+class VerificationError(ZscalerMCPError):
+    """Error related to runtime verification operations.
+    
+    Error codes:
+    - S04-002: Generic verification error
+    - S04-002-001: Timeout waiting for log streams
+    - S04-002-002: Pattern matching failed
+    - S04-002-003: No matching health indicators found
+    - S04-002-004: Verification interrupted
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        phase: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        full_context = context or {}
+        if phase:
+            full_context["phase"] = phase
+        super().__init__(
+            message=message,
+            category=ErrorCategory.CONFIGURATION,
+            severity=ErrorSeverity.ERROR,
+            error_code=error_code or "S04-002",
+            context=full_context
+        )
+        self.phase = phase
+
+
+class FormatterError(ZscalerMCPError):
+    """Error related to connection formatter operations.
+    
+    Error codes:
+    - S04-003: Generic formatter error
+    - S04-003-001: Invalid existing config JSON
+    - S04-003-002: Permission denied writing config file
+    - S04-003-003: Platform detection failure
+    - S04-003-004: Unsupported platform
+    - S04-003-005: Config merge conflict
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(
+            message=message,
+            category=ErrorCategory.CONFIGURATION,
+            severity=ErrorSeverity.ERROR,
+            error_code=error_code or "S04-003",
+            context=context
+        )

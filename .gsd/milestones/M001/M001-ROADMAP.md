@@ -58,7 +58,7 @@ This milestone is complete only when all are true:
 - [x] **S03: Bedrock Runtime Deployment** `risk:medium` `depends:[S02]`
   > After this: CLI creates Bedrock AgentCore runtime with proper configuration, using official Zscaler image or operator's ECR.
 
-- [ ] **S04: Verification & Connection Output** `risk:medium` `depends:[S03]`
+- [x] **S04: Verification & Connection Output** `risk:medium` `depends:[S03]`
   > After this: CLI verifies runtime health via CloudWatch logs, confirms credential injection, and outputs runtime ID/ARN with MCP connection instructions.
 
 - [ ] **S05: Documentation & First-Run Polish** `risk:low` `depends:[S04]`

@@ -54,25 +54,25 @@ This file is the explicit capability and coverage contract for the project.
 
 ### R005 — Runtime Verification
 - **Class:** failure-visibility
-- **Status:** active
+- **Status:** validated
 - **Description:** After deployment, CLI verifies the runtime is actually up and healthy: runtime status check, log stream validation, credential injection confirmation.
 - **Why it matters:** AWS says "CREATE_COMPLETE" but runtime might still be failing. Verification proves it works before handing back to user.
 - **Source:** user
-- **Primary owning slice:** M001/S03
-- **Supporting slices:** M001/S02
-- **Validation:** unmapped
-- **Notes:** Look for specific log patterns indicating successful credential retrieval
+- **Primary owning slice:** M001/S04
+- **Supporting slices:** M001/S03, M001/S02
+- **Validation:** S04-UAT
+- **Notes:** CloudWatch log pattern matching for health indicators ("credential", "retrieved", "MCP server", "started", "listening")
 
 ### R006 — Connection Instructions Output
 - **Class:** primary-user-loop
-- **Status:** active
+- **Status:** validated
 - **Description:** CLI outputs clear, copy-paste-ready instructions for connecting an MCP client to the deployed runtime: runtime ID/ARN, endpoint URL, verification commands, next steps.
 - **Why it matters:** Deployment is useless if operator doesn't know how to actually connect and use it.
 - **Source:** user
-- **Primary owning slice:** M001/S03
+- **Primary owning slice:** M001/S04
 - **Supporting slices:** none
-- **Validation:** unmapped
-- **Notes:** Include runtime ID, ARN, verification command, and MCP client config snippet
+- **Validation:** S04-UAT
+- **Notes:** Cross-platform MCP client config generation for Claude Desktop and Cursor with stdio transport
 
 ### R007 — Network/Security MCP Focus
 - **Class:** differentiator
@@ -152,8 +152,8 @@ This file is the explicit capability and coverage contract for the project.
 | R002 | failure-visibility | validated | M001/S01 | none | S01-UAT |
 | R003 | compliance/security | validated | M001/S02 | M001/S01 | S02-UAT |
 | R004 | core-capability | validated | M001/S03 | M001/S02 | S03-UAT |
-| R005 | failure-visibility | active | M001/S03 | M001/S02 | unmapped |
-| R006 | primary-user-loop | active | M001/S03 | none | unmapped |
+| R005 | failure-visibility | validated | M001/S04 | M001/S03, M001/S02 | S04-UAT |
+| R006 | primary-user-loop | validated | M001/S04 | none | S04-UAT |
 | R007 | differentiator | active | M001 | M003 | unmapped |
 | R008 | operability | deferred | M002 | none | unmapped |
 | R009 | operability | deferred | M002 | none | unmapped |

@@ -10,16 +10,18 @@ An individual operator can run one command and have a working, verified Zscaler 
 
 ## Current State
 
-Slice S03 (Bedrock Runtime Deployment) complete. CLI now supports full deployment flow:
+Slice S04 (Verification & Connection Output) complete. CLI now supports full deployment pipeline:
 - Comprehensive validation engine (AWS session, IAM permissions, Zscaler credentials)
 - AWS Secrets Manager integration with KMS-encrypted secrets and idempotent creation
 - IAM execution role bootstrap with trust policy validation and propagation wait
 - Bootstrap orchestrator with automatic rollback on partial failure
 - **BedrockRuntime class** with CRUD operations and status polling
 - **DeployOrchestrator** coordinating bootstrap → runtime creation → polling with rollback
-- **CLI deploy command** with all flags and Rich table output
+- **Runtime verification** via CloudWatch log analysis with health pattern matching
+- **Connection formatter** generating cross-platform MCP client configs for Claude Desktop and Cursor
+- **CLI deploy command** with verification panels, connection instructions, and proper exit codes
 
-All 282 tests passing (S01: 72, S02: 117, S03: 93). Requirements R001, R002, R003, and R004 validated. R005 (Runtime Verification) and R006 (Connection Instructions) remain for S04.
+All 372 tests passing (S01: 72, S02: 117, S03: 93, S04: 90). Requirements R001, R002, R003, R004, R005, and R006 validated.
 
 ## Architecture / Key Patterns
 

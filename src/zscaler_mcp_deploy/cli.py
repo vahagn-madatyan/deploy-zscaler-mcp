@@ -6,6 +6,8 @@ from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
 
+import json
+
 from . import __version__
 from .validators.aws import AWSSessionValidator
 from .validators.iam import IAMPermissionValidator
@@ -14,7 +16,9 @@ from .errors import AWSCredentialsError, AWSRegionError, AWSPermissionsError
 from .messages import ErrorMessageCatalog, UserGuidance
 from .bootstrap import BootstrapOrchestrator
 from .deploy import DeployOrchestrator
-from .models import BootstrapConfig, DeployConfig
+from .models import BootstrapConfig, DeployConfig, VerificationStatus
+from .output.connection_formatter import ConnectionFormatter
+from rich.panel import Panel
 
 app = typer.Typer(
     name="zscaler-mcp-deploy",
@@ -336,6 +340,8 @@ def deploy(
     description: Optional[str] = typer.Option(None, "--description", "-d", help="Description for created resources"),
     non_interactive: bool = typer.Option(False, "--non-interactive", help="Fail if required values are missing instead of prompting"),
     poll_timeout: int = typer.Option(600, "--poll-timeout", "-t", help="Timeout for runtime polling in seconds (default: 600)"),
+    skip_verification: bool = typer.Option(False, "--skip-verification", help="Skip CloudWatch log verification step"),
+    verification_timeout: int = typer.Option(120, "--verification-timeout", help="Timeout for verification in seconds (default: 120)"),
 ):
     """Deploy Zscaler MCP server to AWS Bedrock AgentCore.
     
@@ -344,9 +350,16 @@ def deploy(
     2. Creates or uses existing IAM execution role for Bedrock
     3. Creates Bedrock AgentCore runtime with the Zscaler MCP server
     4. Polls until runtime reaches READY status
+    5. Verifies runtime health via CloudWatch logs
+    6. Outputs connection instructions for Claude Desktop and Cursor
     
     All operations are idempotent - running multiple times is safe.
     On runtime failure, the runtime is rolled back but bootstrap resources are kept.
+    
+    Exit codes:
+    - 0: Deployment successful and verified (or skipped)
+    - 1: Deployment successful but verification failed/unhealthy
+    - 2: Deployment or verification error
     """
     console.print("[bold blue]Zscaler MCP Deployment[/bold blue]")
     console.print("[dim]Deploying Zscaler MCP server to AWS Bedrock AgentCore...[/dim]\n")
@@ -414,7 +427,12 @@ def deploy(
     
     # Run deployment
     try:
-        result = orchestrator.deploy(config, poll_timeout_seconds=poll_timeout)
+        result = orchestrator.deploy(
+            config, 
+            poll_timeout_seconds=poll_timeout,
+            skip_verification=skip_verification,
+            verification_timeout_seconds=verification_timeout
+        )
         
         # Display results in Rich table
         table = Table(show_header=True, header_style="bold magenta")
@@ -446,6 +464,7 @@ def deploy(
         
         if result.success:
             console.print("\n[green]✅ Deployment completed successfully![/green]")
+            exit_code = 0
             
             # Show runtime details
             details_table = Table(show_header=False, header_style="bold")
@@ -461,6 +480,57 @@ def deploy(
             console.print("\n[bold]Runtime Details:[/bold]")
             console.print(details_table)
             
+            # Show verification status if available
+            if result.verification_result is not None:
+                from .models import VerificationStatus
+                status = result.verification_result.status
+                if status == VerificationStatus.HEALTHY:
+                    panel_color = "green"
+                    panel_title = "✓ Runtime Verification Healthy"
+                    status_text = "[green]HEALTHY[/green]"
+                elif status == VerificationStatus.UNHEALTHY:
+                    panel_color = "yellow"
+                    panel_title = "⚠ Runtime Verification Unhealthy"
+                    status_text = "[yellow]UNHEALTHY[/yellow]"
+                elif status == VerificationStatus.PENDING:
+                    panel_color = "yellow"
+                    panel_title = "⧗ Runtime Verification Pending"
+                    status_text = "[yellow]PENDING[/yellow]"
+                else:  # ERROR
+                    panel_color = "red"
+                    panel_title = "✗ Runtime Verification Error"
+                    status_text = "[red]ERROR[/red]"
+                
+                verification_panel = Panel(
+                    f"Status: {status_text}\n"
+                    f"Matched patterns: {', '.join(result.verification_result.matched_patterns) if result.verification_result.matched_patterns else 'None'}",
+                    title=panel_title,
+                    border_style=panel_color,
+                    padding=(1, 2)
+                )
+                console.print("\n[bold]Runtime Health Verification:[/bold]")
+                console.print(verification_panel)
+                
+                if result.verification_result.error_reason:
+                    console.print(f"[dim]Error reason: {result.verification_result.error_reason}[/dim]")
+                
+                if status != VerificationStatus.HEALTHY:
+                    exit_code = 1
+            
+            # Show connection instructions
+            formatter = ConnectionFormatter()
+            # Determine region from runtime ARN or CLI parameter
+            if result.runtime_arn and ":" in result.runtime_arn:
+                target_region = result.runtime_arn.split(":")[3]
+            else:
+                target_region = region or "us-east-1"
+            instructions = formatter.format_connection_instructions(
+                runtime_id=result.runtime_id,
+                runtime_arn=result.runtime_arn,
+                region=target_region
+            )
+            console.print(instructions)
+            
             # Show next steps
             console.print("\n[bold blue]Next Steps:[/bold blue]")
             console.print("  1. Use the runtime ID to connect your Bedrock agent:")
@@ -469,6 +539,9 @@ def deploy(
                 console.print(f"     [cyan]Endpoint: {result.endpoint_url}[/cyan]")
             console.print("\n  2. Configure your Bedrock agent to use this runtime")
             console.print("  3. Test connectivity with your Zscaler cloud")
+            
+            # Exit with appropriate code
+            raise typer.Exit(code=exit_code)
             
         else:
             console.print(f"\n[red]❌ Deployment failed during '{result.phase}' phase[/red]")
@@ -495,14 +568,14 @@ def deploy(
                 console.print("  • Verify VPC configuration and security groups")
                 console.print("  • Check that the container image is accessible")
             
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=2)
             
     except Exception as e:
         console.print(f"\n[red]❌ Unexpected error:[/red] {str(e)}")
         console.print("\n[blue]Remediation:[/blue] Check the error details and try again")
         console.print("[green]🔧 For detailed help:[/green]")
         console.print("   [cyan]$ zscaler-mcp-deploy deploy --help[/cyan]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=2)
 
 
 if __name__ == "__main__":

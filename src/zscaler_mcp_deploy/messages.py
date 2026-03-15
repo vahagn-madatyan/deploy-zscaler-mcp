@@ -291,7 +291,7 @@ Zscaler MCP Deployer requires the following credentials:
    - Error: "No AWS credentials found"
      [yellow]Solution:[/yellow] Run [cyan]aws configure[/cyan] or set AWS environment variables
    - Error: "InvalidAccessKeyId"
-     [yellow]Solution:[yellow] Check your AWS access key in ~/.aws/credentials
+     [yellow]Solution:[/yellow] Check your AWS access key in ~/.aws/credentials
    - Error: "SignatureDoesNotMatch"
      [yellow]Solution:[/yellow] Verify your AWS secret access key
 
@@ -322,4 +322,122 @@ Zscaler MCP Deployer requires the following credentials:
 [b]For detailed help:[/b]
 [cyan]zscaler-mcp-deploy --help[/cyan]
 [cyan]zscaler-mcp-deploy preflight --help[/cyan]
+"""
+
+    @staticmethod
+    def get_connection_help(
+        runtime_id: str = "<runtime-id>",
+        runtime_arn: str = "<runtime-arn>",
+        region: str = "us-east-1",
+        claude_path: str = "~/Library/Application Support/Claude/claude_desktop_config.json",
+        cursor_path: str = "~/.cursor/mcp.json"
+    ) -> str:
+        """Get help text for MCP client connection configuration.
+
+        Args:
+            runtime_id: Runtime identifier
+            runtime_arn: Full runtime ARN
+            region: AWS region
+            claude_path: Path to Claude Desktop config file
+            cursor_path: Path to Cursor MCP config file
+
+        Returns:
+            Formatted help text with connection instructions
+        """
+        return f"""
+[b]MCP Client Connection Configuration[/b]
+
+Your Bedrock AgentCore runtime is ready! Configure your MCP client to connect:
+
+[b]Runtime Details:[/b]
+  Runtime ID: {runtime_id}
+  Runtime ARN: {runtime_arn}
+  Region: {region}
+
+[b]Configuration Options:[/b]
+
+1. [b]Claude Desktop:[/b]
+   Edit: [cyan]{claude_path}[/cyan]
+
+   Add this to your mcpServers section:
+
+   [cyan]"zscaler-bedrock-runtime": {{
+     "command": "aws",
+     "args": [
+       "bedrock-agent-runtime",
+       "invoke-agent",
+       "--agent-id", "{runtime_id}",
+       "--region", "{region}"
+     ],
+     "env": {{
+       "AWS_DEFAULT_REGION": "{region}"
+     }},
+     "timeout": 300
+   }}[/cyan]
+
+2. [b]Cursor:[/b]
+   Edit: [cyan]{cursor_path}[/cyan]
+
+   Use the same mcpServers configuration as above.
+
+[b]After Configuration:[/b]
+
+1. Restart your MCP client (Claude Desktop or Cursor)
+2. The runtime will appear as an available MCP server
+3. Start a new conversation to use the Zscaler MCP tools
+
+[b]Troubleshooting:[/b]
+
+- If the server doesn't appear, check that AWS credentials are configured
+- Ensure the runtime is in READY state
+- Check CloudWatch logs: [cyan]/aws/bedrock/{runtime_id}[/cyan]
+"""
+
+    @staticmethod
+    def get_post_deploy_summary(
+        runtime_id: str,
+        runtime_arn: str,
+        region: str,
+        verification_status: str = "HEALTHY"
+    ) -> str:
+        """Get a summary message after successful deployment.
+
+        Args:
+            runtime_id: Runtime identifier
+            runtime_arn: Full runtime ARN
+            region: AWS region
+            verification_status: Runtime verification status
+
+        Returns:
+            Formatted deployment summary
+        """
+        status_icon = "✅" if verification_status == "HEALTHY" else "⚠️"
+
+        return f"""
+[b]Deployment Complete![/b]
+
+[b]Runtime Information:[/b]
+  Status: {status_icon} {verification_status}
+  Runtime ID: [cyan]{runtime_id}[/cyan]
+  Runtime ARN: [cyan]{runtime_arn}[/cyan]
+  Region: [cyan]{region}[/cyan]
+
+[b]Next Steps:[/b]
+
+1. Configure your MCP client (see connection instructions above)
+2. Restart Claude Desktop or Cursor
+3. Start a new conversation - the Zscaler MCP tools will be available
+
+[b]Useful Commands:[/b]
+
+  Check runtime status:
+  [cyan]aws bedrock-agent get-agentcore-runtime \\
+    --agentcore-runtime-id {runtime_id} \\
+    --region {region}[/cyan]
+
+  View CloudWatch logs:
+  [cyan]aws logs tail /aws/bedrock/{runtime_id} --follow --region {region}[/cyan]
+
+[b]Need Help?[/b]
+Run: [cyan]zscaler-mcp-deploy --help[/cyan]
 """

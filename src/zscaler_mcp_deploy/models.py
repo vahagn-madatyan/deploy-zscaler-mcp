@@ -1,6 +1,7 @@
 """Data models for Zscaler MCP Deployer."""
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Optional, Dict, Any, List
 
 
@@ -274,9 +275,10 @@ class DeployResult:
         role_created: True if role was newly created
         runtime_created: True if runtime was newly created
         bootstrap_result: Full bootstrap result for detailed inspection
+        verification_result: Runtime verification result (optional)
         error_message: Error message if deployment failed
         error_code: Error code for diagnostics
-        phase: Phase where failure occurred (bootstrap, runtime_create, polling, rollback)
+        phase: Phase where failure occurred (bootstrap, runtime_create, polling, rollback, verification)
     """
     success: bool = False
     runtime_id: Optional[str] = None
@@ -289,6 +291,7 @@ class DeployResult:
     role_created: bool = False
     runtime_created: bool = False
     bootstrap_result: Optional[BootstrapResult] = None
+    verification_result: Optional[VerificationResult] = None
     error_message: Optional[str] = None
     error_code: Optional[str] = None
     phase: Optional[str] = None
@@ -307,7 +310,105 @@ class DeployResult:
             "role_created": self.role_created,
             "runtime_created": self.runtime_created,
             "bootstrap_result": self.bootstrap_result.to_dict() if self.bootstrap_result else None,
+            "verification_result": self.verification_result.to_dict() if self.verification_result else None,
             "error_message": self.error_message,
             "error_code": self.error_code,
             "phase": self.phase,
         }
+
+
+class VerificationStatus(Enum):
+    """Status of runtime verification via CloudWatch logs.
+    
+    Attributes:
+        HEALTHY: Runtime is operational with all health indicators present
+        UNHEALTHY: Runtime is running but missing critical health indicators
+        PENDING: Verification in progress, no conclusive result yet
+        ERROR: CloudWatch API error or timeout occurred
+    """
+    HEALTHY = "healthy"
+    UNHEALTHY = "unhealthy"
+    PENDING = "pending"
+    ERROR = "error"
+
+
+@dataclass
+class VerificationConfig:
+    """Configuration for runtime verification.
+    
+    Attributes:
+        runtime_id: Runtime identifier for log group lookup
+        log_group_prefix: Prefix for CloudWatch log group (default: /aws/bedrock/)
+        timeout_seconds: Maximum time to wait for logs (default: 120)
+        poll_interval_initial: Initial polling interval in seconds (default: 2)
+        poll_interval_max: Maximum polling interval in seconds (default: 10)
+        health_patterns: List of regex patterns to match for healthy runtime
+    """
+    runtime_id: str
+    log_group_prefix: str = "/aws/bedrock/"
+    timeout_seconds: int = 120
+    poll_interval_initial: float = 2.0
+    poll_interval_max: float = 10.0
+    health_patterns: List[str] = field(default_factory=lambda: [
+        "credential",
+        "retrieved",
+        "MCP server",
+        "started",
+        "listening"
+    ])
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the config to a dictionary."""
+        return {
+            "runtime_id": self.runtime_id,
+            "log_group_prefix": self.log_group_prefix,
+            "timeout_seconds": self.timeout_seconds,
+            "poll_interval_initial": self.poll_interval_initial,
+            "poll_interval_max": self.poll_interval_max,
+            "health_patterns": self.health_patterns,
+        }
+
+
+@dataclass
+class VerificationResult:
+    """Result of runtime verification via CloudWatch logs.
+    
+    Attributes:
+        status: Verification status (HEALTHY, UNHEALTHY, PENDING, ERROR)
+        runtime_id: Runtime identifier that was verified
+        matched_patterns: List of health patterns that were found in logs
+        error_reason: Description of error if status is ERROR
+        log_evidence: Dictionary of log stream names to matched events
+        verification_duration_ms: Time taken for verification in milliseconds
+        phase: Phase where failure occurred (stream_discovery, event_fetching, pattern_matching)
+        error_code: Error code for diagnostics
+    """
+    status: VerificationStatus
+    runtime_id: str
+    matched_patterns: List[str] = field(default_factory=list)
+    error_reason: Optional[str] = None
+    log_evidence: Dict[str, List[str]] = field(default_factory=dict)
+    verification_duration_ms: Optional[int] = None
+    phase: Optional[str] = None
+    error_code: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the result to a dictionary."""
+        return {
+            "status": self.status.value,
+            "runtime_id": self.runtime_id,
+            "matched_patterns": self.matched_patterns,
+            "error_reason": self.error_reason,
+            "log_evidence": self.log_evidence,
+            "verification_duration_ms": self.verification_duration_ms,
+            "phase": self.phase,
+            "error_code": self.error_code,
+        }
+    
+    def is_healthy(self) -> bool:
+        """Check if verification passed (HEALTHY status)."""
+        return self.status == VerificationStatus.HEALTHY
+    
+    def has_errors(self) -> bool:
+        """Check if verification encountered errors."""
+        return self.status == VerificationStatus.ERROR

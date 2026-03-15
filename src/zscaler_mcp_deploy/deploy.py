@@ -1,6 +1,6 @@
 """Deployment orchestrator for Zscaler MCP Deployer.
 
-Coordinates the complete deployment flow: bootstrap (S02) → runtime creation (T01/T02).
+Coordinates the complete deployment flow: bootstrap (S02) → runtime creation (T01/T02) → verification (S04).
 Provides rollback on runtime failure and comprehensive deployment results.
 """
 
@@ -11,7 +11,8 @@ import boto3
 
 from .bootstrap import BootstrapOrchestrator, BootstrapConfig
 from .aws.bedrock_runtime import BedrockRuntime, BedrockRuntimeError
-from .models import DeployConfig, DeployResult, BootstrapResult, RuntimeResult
+from .aws.cloudwatch_verifier import RuntimeVerifier
+from .models import DeployConfig, DeployResult, BootstrapResult, RuntimeResult, VerificationResult
 from .errors import (
     ZscalerMCPError,
     ErrorCategory,
@@ -37,6 +38,7 @@ class DeployOrchestrator:
         session: Optional[boto3.Session] = None,
         bootstrap_orchestrator: Optional[BootstrapOrchestrator] = None,
         bedrock_runtime: Optional[BedrockRuntime] = None,
+        runtime_verifier: Optional[RuntimeVerifier] = None,
     ):
         """Initialize DeployOrchestrator.
         
@@ -46,12 +48,14 @@ class DeployOrchestrator:
             session: Pre-configured boto3 session (optional)
             bootstrap_orchestrator: Pre-configured BootstrapOrchestrator (optional, for testing)
             bedrock_runtime: Pre-configured BedrockRuntime (optional, for testing)
+            runtime_verifier: Pre-configured RuntimeVerifier (optional, for testing)
         """
         self._region = region
         self._profile_name = profile_name
         self._session = session
         self._bootstrap_orchestrator = bootstrap_orchestrator
         self._bedrock_runtime = bedrock_runtime
+        self._runtime_verifier = runtime_verifier
         self._created_runtime_id: Optional[str] = None
     
     @property
@@ -88,6 +92,17 @@ class DeployOrchestrator:
                 session=self._session
             )
         return self._bedrock_runtime
+    
+    @property
+    def runtime_verifier(self) -> RuntimeVerifier:
+        """Lazy initialization of RuntimeVerifier."""
+        if self._runtime_verifier is None:
+            self._runtime_verifier = RuntimeVerifier(
+                region=self._region,
+                profile_name=self._profile_name,
+                session=self._session
+            )
+        return self._runtime_verifier
     
     def _run_bootstrap(self, config: DeployConfig) -> BootstrapResult:
         """Run bootstrap phase to create/get secret and IAM role.
@@ -197,16 +212,40 @@ class DeployOrchestrator:
             logger.error(f"Rollback failed: {e.message}")
             return False
     
+    def _verify_runtime(
+        self,
+        runtime_id: str,
+        timeout_seconds: int = 120
+    ) -> VerificationResult:
+        """Verify runtime health via CloudWatch logs.
+        
+        Args:
+            runtime_id: Runtime identifier to verify
+            timeout_seconds: Maximum time to wait for verification
+            
+        Returns:
+            VerificationResult with status and evidence
+        """
+        logger.info(f"Phase: verification - checking runtime health for {runtime_id}")
+        return self.runtime_verifier.verify_runtime(
+            runtime_id=runtime_id,
+            timeout_seconds=timeout_seconds
+        )
+    
     def deploy(
         self,
         config: DeployConfig,
-        poll_timeout_seconds: int = 600
+        poll_timeout_seconds: int = 600,
+        skip_verification: bool = False,
+        verification_timeout_seconds: int = 120
     ) -> DeployResult:
-        """Orchestrate complete deployment: bootstrap → runtime → polling.
+        """Orchestrate complete deployment: bootstrap → runtime → polling → verification.
         
         Args:
             config: Deployment configuration
             poll_timeout_seconds: Maximum time to wait for runtime READY status
+            skip_verification: If True, skip CloudWatch log verification
+            verification_timeout_seconds: Maximum time to wait for verification
             
         Returns:
             DeployResult with all resource details and status
@@ -311,6 +350,28 @@ class DeployOrchestrator:
                 runtime_created=True,
             )
         
+        # Phase 4: Verify runtime health (unless skipped)
+        verification_result: Optional[VerificationResult] = None
+        if not skip_verification:
+            try:
+                verification_result = self._verify_runtime(
+                    runtime_id=final_result.runtime_id,
+                    timeout_seconds=verification_timeout_seconds
+                )
+                logger.info(f"Verification completed - status: {verification_result.status.value}")
+            except Exception as e:
+                logger.warning(f"Verification failed with exception: {e}")
+                # Create error verification result
+                from .models import VerificationStatus
+                verification_result = VerificationResult(
+                    status=VerificationStatus.ERROR,
+                    runtime_id=final_result.runtime_id,
+                    error_reason=f"Verification exception: {str(e)}",
+                    error_code="S04-002-004"
+                )
+        else:
+            logger.info("Verification skipped as requested")
+        
         # Success!
         logger.info(f"Deployment completed successfully - runtime {final_result.runtime_id} is READY")
         
@@ -326,6 +387,7 @@ class DeployOrchestrator:
             role_created=bootstrap_result.role_created,
             runtime_created=True,
             bootstrap_result=bootstrap_result,
+            verification_result=verification_result,
             phase="completed",
         )
     
