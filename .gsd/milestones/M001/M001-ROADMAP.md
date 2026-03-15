@@ -49,7 +49,7 @@ This milestone is complete only when all are true:
 
 ## Slices
 
-- [ ] **S01: Preflight & Validation Engine** `risk:high` `depends:[]`
+- [x] **S01: Preflight & Validation Engine** `risk:high` `depends:[]`
   > After this: CLI validates AWS permissions, region, Zscaler credentials, and fails fast with exact fix instructions before any deployment attempt.
 
 - [ ] **S02: Secrets Manager & IAM Bootstrap** `risk:high` `depends:[S01]`

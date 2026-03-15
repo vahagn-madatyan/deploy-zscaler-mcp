@@ -2,29 +2,31 @@
 
 This file is the explicit capability and coverage contract for the project.
 
-## Active
+## Validated
 
 ### R001 — One-Command Interactive Deploy
 - **Class:** primary-user-loop
-- **Status:** active
+- **Status:** validated
 - **Description:** Operator runs a single CLI command with interactive prompts to deploy Zscaler MCP to AWS Bedrock AgentCore. No config files to edit, no manual AWS console steps.
 - **Why it matters:** Removes the friction of multi-step AWS setup and CloudFormation parameter configuration.
 - **Source:** user
 - **Primary owning slice:** M001/S01
 - **Supporting slices:** M001/S02
-- **Validation:** unmapped
-- **Notes:** Must guide through credential collection interactively
+- **Validation:** S01-UAT
+- **Notes:** CLI structure with version, help, and preflight commands proven. Interactive prompts for credentials in place.
 
 ### R002 — Strict Preflight Validation
 - **Class:** failure-visibility
-- **Status:** active
+- **Status:** validated
 - **Description:** CLI validates all prerequisites before attempting deployment: AWS CLI configured with appropriate permissions, AWS region supported, Zscaler credentials valid, required IAM permissions available.
 - **Why it matters:** AWS deploy failures are expensive and confusing. Strict preflight gives clear, actionable errors before any resources are created.
 - **Source:** user
 - **Primary owning slice:** M001/S01
 - **Supporting slices:** none
-- **Validation:** unmapped
-- **Notes:** Must fail with exact fix instructions, not generic errors
+- **Validation:** S01-UAT
+- **Notes:** Comprehensive validation engine with 72 tests covering AWS session, IAM permissions, and Zscaler credentials. Fails fast with exact fix instructions.
+
+## Active
 
 ### R003 — AWS Secrets Manager Integration
 - **Class:** compliance/security
@@ -144,8 +146,8 @@ This file is the explicit capability and coverage contract for the project.
 
 | ID | Class | Status | Primary owner | Supporting | Proof |
 |---|---|---|---|---|---|
-| R001 | primary-user-loop | active | M001/S01 | M001/S02 | unmapped |
-| R002 | failure-visibility | active | M001/S01 | none | unmapped |
+| R001 | primary-user-loop | validated | M001/S01 | M001/S02 | S01-UAT |
+| R002 | failure-visibility | validated | M001/S01 | none | S01-UAT |
 | R003 | compliance/security | active | M001/S02 | M001/S01 | unmapped |
 | R004 | core-capability | active | M001/S02 | M001/S01 | unmapped |
 | R005 | failure-visibility | active | M001/S03 | M001/S02 | unmapped |

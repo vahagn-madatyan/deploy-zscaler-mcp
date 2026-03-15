@@ -10,7 +10,13 @@ An individual operator can run one command and have a working, verified Zscaler 
 
 ## Current State
 
-New project. Repository contains research artifacts (architecture analysis, deployment comparison) but no implementation. The upstream `zscaler-mcp-server` package already supports the server runtime; this CLI orchestrates the deployment to AWS Bedrock AgentCore.
+Slice S01 (Preflight & Validation Engine) complete. CLI foundation established with Typer framework. Comprehensive validation engine deployed including:
+- AWS session validation with credential chain support
+- IAM permission validation for Bedrock/SecretsManager/STS
+- Zscaler credential validation with format checking and connectivity tests
+- Structured error messaging system with actionable fix instructions
+
+All 72 tests passing. Requirements R001 and R002 validated.
 
 ## Architecture / Key Patterns
 

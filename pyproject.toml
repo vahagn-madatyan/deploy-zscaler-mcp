@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "zscaler-mcp-deployer"
+version = "0.1.0"
+description = "Zscaler MCP Deployment Validator and Preflight Checker"
+authors = ["Vahagn Madatyan <vahagn.madatyan@accenture.com>"]
+packages = [
+    { include = "zscaler_mcp_deploy", from = "src" }
+]
+
+[tool.poetry.scripts]
+zscaler-mcp-deploy = "zscaler_mcp_deploy.cli:app"
+
+[tool.poetry.dependencies]
+python = ">=3.14"
+typer = "^0.24.1"
+rich = "^14.3.3"
+boto3 = "^1.42.68"
+requests = "^2.32.3"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+[dependency-groups]
+dev = [
+    "pytest (>=9.0.2,<10.0.0)"
+]
