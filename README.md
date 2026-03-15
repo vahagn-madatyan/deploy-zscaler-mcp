@@ -31,7 +31,7 @@ Zscaler MCP Deployer streamlines the deployment of Zscaler MCP servers on AWS Be
 
 3. **Validate prerequisites (optional but recommended):**
    ```bash
-   zscaler-mcp-deploy first-run
+   zscaler-mcp-deploy preflight
    ```
 
 4. **Deploy your MCP server:**
