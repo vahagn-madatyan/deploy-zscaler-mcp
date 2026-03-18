@@ -1,4 +1,8 @@
 
+# Old scaffold (superseded by top-level project)
+deploy-zscaler-mcp/
+poetry.lock
+
 # ── GSD baseline (auto-generated) ──
 .gsd/activity/
 .gsd/runtime/
@@ -21,6 +25,7 @@ node_modules/
 .next/
 dist/
 build/
+*.egg-info/
 __pycache__/
 *.pyc
 .venv/
