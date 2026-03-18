@@ -7,7 +7,7 @@ import sys
 def test_version_command():
     """Test that the version command outputs the correct version."""
     result = subprocess.run(
-        ["zscaler-mcp-deploy", "--version"],
+        ["deploy-zscaler-mcp", "--version"],
         capture_output=True,
         text=True,
         cwd="."
@@ -18,7 +18,7 @@ def test_version_command():
 def test_help_command():
     """Test that the help command works."""
     result = subprocess.run(
-        ["zscaler-mcp-deploy", "--help"],
+        ["deploy-zscaler-mcp", "--help"],
         capture_output=True,
         text=True,
         cwd="."
@@ -29,7 +29,7 @@ def test_help_command():
 def test_preflight_command():
     """Test that the preflight command works and validates AWS credentials."""
     result = subprocess.run(
-        ["zscaler-mcp-deploy", "preflight"],
+        ["deploy-zscaler-mcp", "preflight"],
         capture_output=True,
         text=True,
         cwd="."
@@ -43,7 +43,7 @@ def test_preflight_command():
 def test_preflight_command_skip_iam():
     """Test that the preflight command works with IAM validation skipped."""
     result = subprocess.run(
-        ["zscaler-mcp-deploy", "preflight", "--skip-iam"],
+        ["deploy-zscaler-mcp", "preflight", "--skip-iam"],
         capture_output=True,
         text=True,
         cwd="."
@@ -57,7 +57,7 @@ def test_preflight_command_skip_iam():
 def test_preflight_help_includes_iam_option():
     """Test that the preflight help includes the IAM skip option."""
     result = subprocess.run(
-        ["zscaler-mcp-deploy", "preflight", "--help"],
+        ["deploy-zscaler-mcp", "preflight", "--help"],
         capture_output=True,
         text=True,
         cwd="."
@@ -68,7 +68,7 @@ def test_preflight_help_includes_iam_option():
 def test_preflight_help_includes_zscaler_options():
     """Test that the preflight help includes Zscaler options."""
     result = subprocess.run(
-        ["zscaler-mcp-deploy", "preflight", "--help"],
+        ["deploy-zscaler-mcp", "preflight", "--help"],
         capture_output=True,
         text=True,
         cwd="."
@@ -83,7 +83,7 @@ def test_preflight_help_includes_zscaler_options():
 def test_preflight_with_skip_all():
     """Test that the preflight command works with all validations skipped."""
     result = subprocess.run(
-        ["zscaler-mcp-deploy", "preflight", "--skip-iam", "--skip-zscaler"],
+        ["deploy-zscaler-mcp", "preflight", "--skip-iam", "--skip-zscaler"],
         capture_output=True,
         text=True,
         cwd="."
