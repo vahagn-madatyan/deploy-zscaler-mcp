@@ -108,6 +108,8 @@ pip install zscaler-mcp-deployer
 ```bash
 git clone <repository-url>
 cd zscaler-mcp-deployer
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
