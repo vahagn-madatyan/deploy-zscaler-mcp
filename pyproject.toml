@@ -1,29 +1,53 @@
-[tool.poetry]
-name = "zscaler-mcp-deployer"
-version = "0.1.0"
-description = "Zscaler MCP Deployment Validator and Preflight Checker"
-authors = ["Vahagn Madatyan <vahagn.madatyan@accenture.com>"]
-packages = [
-    { include = "zscaler_mcp_deploy", from = "src" }
-]
-
-[tool.poetry.scripts]
-zscaler-mcp-deploy = "zscaler_mcp_deploy.cli:app"
-
-[tool.poetry.dependencies]
-python = ">=3.14"
-typer = "^0.24.1"
-rich = "^14.3.3"
-boto3 = "^1.42.68"
-requests = "^2.32.3"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^9.0.2"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-[dependency-groups]
-dev = [
-    "pytest (>=9.0.2,<10.0.0)"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deploy-zscaler-mcp"
+version = "0.1.0"
+description = "CLI tool for deploying Zscaler MCP servers to AWS Bedrock AgentCore with preflight validation and secure credential handling"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+readme = "README.md"
+authors = [
+    {name = "Vahagn Madatyan"},
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Security",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "boto3>=1.34.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/vahagn-madatyan/deploy-zscaler-mcp"
+Repository = "https://github.com/vahagn-madatyan/deploy-zscaler-mcp"
+Issues = "https://github.com/vahagn-madatyan/deploy-zscaler-mcp/issues"
+
+[project.scripts]
+deploy-zscaler-mcp = "zscaler_mcp_deploy.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

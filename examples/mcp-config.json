@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "zscaler-bedrock-runtime": {
+      "command": "aws",
+      "args": [
+        "bedrock-agent-runtime",
+        "invoke-agent",
+        "--agent-id",
+        "YOUR_RUNTIME_ID",
+        "--region",
+        "us-east-1"
+      ],
+      "env": {
+        "AWS_DEFAULT_REGION": "us-east-1"
+      },
+      "timeout": 300
+    }
+  }
+}

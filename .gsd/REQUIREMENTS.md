@@ -76,14 +76,14 @@ This file is the explicit capability and coverage contract for the project.
 
 ### R007 — Network/Security MCP Focus
 - **Class:** differentiator
-- **Status:** active
+- **Status:** validated
 - **Description:** Product is explicitly designed for network and security MCP servers (Zscaler now, others later), not a generic MCP deployment framework.
 - **Why it matters:** Keeps scope focused, allows domain-specific optimizations and security patterns that generic tools can't provide.
 - **Source:** user
 - **Primary owning slice:** M001 (foundation), M003 (expansion)
 - **Supporting slices:** all
-- **Validation:** unmapped
-- **Notes:** This is a strategic constraint, not a technical one
+- **Validation:** S05-UAT
+- **Notes:** This is a strategic constraint, not a technical one. Documentation now establishes clear Zscaler network/security focus.
 
 ## Deferred
 
@@ -154,7 +154,7 @@ This file is the explicit capability and coverage contract for the project.
 | R004 | core-capability | validated | M001/S03 | M001/S02 | S03-UAT |
 | R005 | failure-visibility | validated | M001/S04 | M001/S03, M001/S02 | S04-UAT |
 | R006 | primary-user-loop | validated | M001/S04 | none | S04-UAT |
-| R007 | differentiator | active | M001 | M003 | unmapped |
+| R007 | differentiator | validated | M001 | M003 | S05-UAT |
 | R008 | operability | deferred | M002 | none | unmapped |
 | R009 | operability | deferred | M002 | none | unmapped |
 | R010 | core-capability | deferred | M003 | none | unmapped |
@@ -163,7 +163,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 5
+- Active requirements: 4
 - Mapped to slices: 6
-- Validated: 4
+- Validated: 5
 - Unmapped active requirements: 0
